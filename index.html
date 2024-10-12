@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AgriVerify</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  </head>
+  <body>
+    <h1>AgriVerify - Crop Certification</h1>
+
+    <div>
+      <h2>Connect Wallet</h2>
+      <button id="connectWalletButton">Connect Wallet</button>
+      <p id="walletAddress"></p>
+    </div>
+
+    <div>
+      <h2>Certify a Crop</h2>
+      <label for="cropName">Crop Name:</label>
+      <input
+        type="text"
+        id="cropName"
+        placeholder="e.g., Organic Apple"
+      /><br /><br />
+      <label for="farmLocation">Farm Location:</label>
+      <input
+        type="text"
+        id="farmLocation"
+        placeholder="e.g., Green Valley Farms"
+      /><br /><br />
+      <button id="certifyButton">Certify Crop</button>
+      <p id="certificationStatus"></p>
+    </div>
+
+    <div>
+      <h2>Get Certified Crop Details</h2>
+      <label for="cropId">Crop ID:</label>
+      <input type="number" id="cropId" placeholder="e.g., 1" /><br /><br />
+      <button id="getCropButton">Get Crop Details</button>
+      <p id="cropDetails"></p>
+    </div>
+
+    <script>
+      // Contract address and ABI
+      const contractAddress = "YOUR_DEPLOYED_CONTRACT_ADDRESS";
+      const contractABI = [
+        // ABI details for certifyCrop and getCrop
+        {
+          inputs: [
+            {
+              internalType: "string",
+              name: "_name",
+              type: "string",
+            },
+            {
+              internalType: "string",
+              name: "_farmLocation",
+              type: "string",
+            },
+          ],
+          name: "certifyCrop",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "_cropId",
+              type: "uint256",
+            },
+          ],
+          name: "getCrop",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+      ];
+
+      let provider, signer, agriVerifyContract;
+
+      const connectWalletButton = document.getElementById(
+        "connectWalletButton"
+      );
+      const walletAddressElement = document.getElementById("walletAddress");
+
+      connectWalletButton.addEventListener("click", async () => {
+        if (window.ethereum) {
+          // Check if MetaMask is installed
+          try {
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            console.log("MetaMask is installed!");
+            await provider.send("eth_requestAccounts", []); // Request accounts
+            const signer = provider.getSigner();
+            console.log(signer, " :signer");
+
+            const walletAddress = await signer.getAddress();
+
+            walletAddressElement.innerText = `Connected: ${walletAddress}`;
+            console.log("Connected to MetaMask with address: ", walletAddress);
+
+            // Instantiate the contract
+            const agriVerifyContract = new ethers.Contract(
+              contractAddress,
+              contractABI,
+              signer
+            );
+          } catch (error) {
+            console.error("MetaMask connection error:", error);
+            alert("Failed to connect MetaMask. Please try again.");
+          }
+        } else {
+          alert(
+            "MetaMask is not installed. Please install MetaMask and try again."
+          );
+        }
+      });
+
+      // Certify crop
+      const certifyButton = document.getElementById("certifyButton");
+      const certificationStatusElement = document.getElementById(
+        "certificationStatus"
+      );
+
+      certifyButton.addEventListener("click", async () => {
+        const cropName = document.getElementById("cropName").value;
+        const farmLocation = document.getElementById("farmLocation").value;
+
+        if (cropName && farmLocation && agriVerifyContract) {
+          try {
+            const tx = await agriVerifyContract.certifyCrop(
+              cropName,
+              farmLocation
+            );
+            await tx.wait();
+            certificationStatusElement.innerText = `Certified crop: ${cropName} from ${farmLocation}`;
+          } catch (error) {
+            console.error(error);
+            certificationStatusElement.innerText = `Error: ${error.message}`;
+          }
+        } else {
+          certificationStatusElement.innerText =
+            "Please fill all fields and connect wallet";
+        }
+      });
+
+      // Get crop details
+      const getCropButton = document.getElementById("getCropButton");
+      const cropDetailsElement = document.getElementById("cropDetails");
+
+      getCropButton.addEventListener("click", async () => {
+        const cropId = document.getElementById("cropId").value;
+
+        if (cropId && agriVerifyContract) {
+          try {
+            const crop = await agriVerifyContract.getCrop(cropId);
+            cropDetailsElement.innerText = `Name: ${crop[0]}, Farm Location: ${crop[1]}, Certifier: ${crop[2]}, Certified: ${crop[3]}`;
+          } catch (error) {
+            console.error(error);
+            cropDetailsElement.innerText = `Error: ${error.message}`;
+          }
+        } else {
+          cropDetailsElement.innerText =
+            "Please enter Crop ID and connect wallet";
+        }
+      });
+    </script>
+  </body>
+</html>
